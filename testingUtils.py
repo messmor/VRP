@@ -22,7 +22,6 @@ def testSolution(file_path, solution_func, print_out=False):
             print(f"schedule drive time:", getDistanceOfScheduleWithReturnHome(sched, loadByID))
     # print solution metrics
     total_number_of_driven_minutes, _ = getSolutionCostWithError(problem, schedules)
-
     number_of_drivers = len(schedules)
     total_cost = 500 * number_of_drivers + total_number_of_driven_minutes
     run_time = (end_time - start_time) * 1e6
@@ -57,7 +56,11 @@ def getAvgMetricsOnTraining(training_dir, solution_func):
 
 
 if __name__ == "__main__":
-    from greedySolution import solveVRP as greedySolver
+    from greedySolution import greedyBasicVRP, greedyWith3OptVRP, greedyWith2OptVRP
     training_dir = "./Training Problems"
     print("### metrics for greedySolver ###")
-    getAvgMetricsOnTraining(training_dir, greedySolver)
+    getAvgMetricsOnTraining(training_dir, greedyBasicVRP)
+    print("### metrics for greedySolver with 2-opt ###")
+    getAvgMetricsOnTraining(training_dir, greedyWith2OptVRP)
+    print("### metrics for greedySolver with 3-opt ###")
+    getAvgMetricsOnTraining(training_dir, greedyWith3OptVRP)

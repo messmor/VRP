@@ -2,7 +2,8 @@ from time import time
 from pathlib import Path
 from copy import copy
 from evaluateShared import loadProblemFromFile, Load, Point, distanceBetweenPoints, getSolutionCostWithError, getDistanceOfScheduleWithReturnHome
-
+from threeOptOptimization import threeOptVRPSolution
+from twoOptOptimization import twoOptVRPSolution
 # predefined rules for the VRP
 depot = Load(id='0', pickup=Point(0,0), dropoff=Point(0, 0)) # treat the depot as a load (location where drivers must start and end shift)
 max_route_dst = 12 * 60 # drivers have a max shift of 12 hours, time in minutes == Euclidean dst
@@ -27,7 +28,7 @@ def findNearestLoad(current_load, loads):
     return nearestLoad
 
 
-def solveVRP(file_path):
+def greedyBasicVRP(file_path):
     """A method for solving the Vehicle Routing Problem using a nearest neighbor greedy algorithm
     inputs: file_path a string file to the input txt file containing load information
     outputs: schedules a list of schedules refering the the load ids [[1, 3, 4], [2, 5], ... etc
@@ -69,6 +70,34 @@ def solveVRP(file_path):
         schedules.append(curr_sched)
 
     return schedules
+
+
+def greedyWith2OptVRP(file_path):
+    """A method for solving the Vehicle Routing Problem using a nearest neighbor greedy algorithm,
+    followed by the 2-opt optimization technique.
+    inputs: file_path a string file to the input txt file containing load information
+    outputs: schedules a list of schedules refering the the load ids [[1, 3, 4], [2, 5], ... etc
+    """
+    schedules = greedyBasicVRP(file_path)
+    optimized_schedules = twoOptVRPSolution(file_path, schedules)
+
+    return optimized_schedules
+
+
+def greedyWith3OptVRP(file_path):
+    """A method for solving the Vehicle Routing Problem using a nearest neighbor greedy algorithm,
+    followed by the 3-opt optimization technique.
+    inputs: file_path a string file to the input txt file containing load information
+    outputs: schedules a list of schedules refering the the load ids [[1, 3, 4], [2, 5], ... etc
+    """
+    schedules = greedyBasicVRP(file_path)
+    optimized_schedules = threeOptVRPSolution(file_path, schedules)
+
+    return optimized_schedules
+
+
+
+
 
 
 

@@ -7,6 +7,7 @@ import time
 import argparse
 
 
+
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -34,6 +35,10 @@ class Load:
 
     def load_dist(self):
         return distanceBetweenPoints(self.pickup, self.dropoff)
+
+    def convert_2_tuple(self):
+        return tuple(self.pickup.toList()), tuple(self.dropoff.toList())
+
 
 
 class VRP:
