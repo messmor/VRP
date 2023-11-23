@@ -9,9 +9,12 @@ import argparse
 
 
 class Point:
-    def __init__(self, x, y):
+    def __init__(self, x, y, theta=None):
         self.x = x
         self.y = y
+        # add polar coordinated for points
+        self.r = math.sqrt(x**2 + y**2)
+        self.theta = math.atan2(y, x)
     def toString(self):
         return "(" + str(self.x) + "," + str(self.y) + ")"
     def toList(self):

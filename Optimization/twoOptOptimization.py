@@ -1,7 +1,7 @@
 import itertools
 import numpy as np
 from pathlib import Path
-from evaluateShared import loadProblemFromFile, distanceBetweenPoints, Load, Point
+from Utils.evaluateShared import loadProblemFromFile, distanceBetweenPoints, Load, Point
 
 
 # predefined rules for the VRP
@@ -106,8 +106,8 @@ def twoOptVRPSolution(file_path, solution):
 
 
 if __name__ == "__main__":
-    from greedySolution import greedyBasicVRP
-    file_path = "./Training Problems/problem1.txt"
+    from Solutions.greedySolution import greedyBasicVRP
+    file_path = "../Training Problems/problem1.txt"
     solution = greedyBasicVRP(file_path)
     new_solution = twoOptVRPSolution(file_path=file_path, solution=solution)
 

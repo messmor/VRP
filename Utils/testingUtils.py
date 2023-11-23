@@ -1,5 +1,5 @@
 from time import time
-from evaluateShared import loadProblemFromFile, getSolutionCostWithError, getDistanceOfScheduleWithReturnHome
+from Utils.evaluateShared import loadProblemFromFile, getSolutionCostWithError, getDistanceOfScheduleWithReturnHome
 from pathlib import Path
 
 def testSolution(file_path, solution_func, print_out=False):
@@ -24,10 +24,10 @@ def testSolution(file_path, solution_func, print_out=False):
     total_number_of_driven_minutes, _ = getSolutionCostWithError(problem, schedules)
     number_of_drivers = len(schedules)
     total_cost = 500 * number_of_drivers + total_number_of_driven_minutes
-    run_time = (end_time - start_time) * 1e6
+    run_time = (end_time - start_time)
     if print_out:
         print("solution total cost:", total_cost)
-        print(f"solution run time: {run_time} ms!" )
+        print(f"solution run time: {run_time} seconds!" )
 
     return total_cost, run_time
 
@@ -51,16 +51,23 @@ def getAvgMetricsOnTraining(training_dir, solution_func):
     avg_time = total_time / number_problems
     avg_cost = total_cost / number_problems
 
-    print("avg_time ms", avg_time, "avg_time seconds", avg_time / 1e6)
+    print("avg_time seconds", avg_time)
     print("avg_cost", avg_cost)
 
 
 if __name__ == "__main__":
-    from greedySolution import greedyBasicVRP, greedyWith3OptVRP, greedyWith2OptVRP
-    training_dir = "./Training Problems"
-    print("### metrics for greedySolver ###")
-    getAvgMetricsOnTraining(training_dir, greedyBasicVRP)
-    print("### metrics for greedySolver with 2-opt ###")
-    getAvgMetricsOnTraining(training_dir, greedyWith2OptVRP)
-    print("### metrics for greedySolver with 3-opt ###")
-    getAvgMetricsOnTraining(training_dir, greedyWith3OptVRP)
+    import functools
+    from Solutions.greedySolution import greedyBasicVRP, greedyWith3OptVRP, greedyWith2OptVRP, greedyEnsembleVRP
+    from Solutions.sweepSolution import sweepVRP, sweepWith2OptVRP
+    from Solutions.ortoolsSolution import ortoolsSolver
+    training_dir = "Training Problems"
+    print("### metrics for greedySolver nearest ###")
+    getAvgMetricsOnTraining(training_dir, functools.partial(greedyBasicVRP, mode="nearest"))
+    print("### metrics for greedySolver furthest ###")
+    getAvgMetricsOnTraining(training_dir, functools.partial(greedyBasicVRP, mode="furthest"))
+    print("### metrics for greedyEnsembleSolver ###")
+    getAvgMetricsOnTraining(training_dir, greedyEnsembleVRP)
+    print("### metrics for sweepSolver Basic ###")
+    getAvgMetricsOnTraining(training_dir, sweepVRP)
+    print("### metrics for sweepSolver 2-opt ###")
+    getAvgMetricsOnTraining(training_dir, sweepWith2OptVRP)
