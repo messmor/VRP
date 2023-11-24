@@ -2,8 +2,6 @@ import numpy as np
 from pathlib import Path
 from copy import copy
 from Utils.evaluateShared import loadProblemFromFile, Load, Point, distanceBetweenPoints
-from Optimization.threeOptOptimization import threeOptVRPSolution
-from Optimization.twoOptOptimization import twoOptVRPSolution
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from Utils.evaluateShared import loadProblemFromFile
@@ -142,18 +140,5 @@ def ortoolsSolver(file_path, print_solutions=False):
 
 
 
-if __name__ == '__main__':
-    from time import time
-    for i in range(1, 21, 1):
-        print(f"### problem {i} ###")
-        file_path = f"Training Problems/problem{i}.txt"
-        loads = loadProblemFromFile(file_path).loads
-        data = create_data_model(loads)
-        st = time()
-        schedules = ortoolsSolver(file_path, print_solutions=True)
-        et = time()
-        print("runtime", et-st)
-        # print("#### ortools schedules ####")
-        # for i, route in enumerate(schedules):
-        #     print(f"route {i}: ", route)
+
 

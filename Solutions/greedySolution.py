@@ -1,9 +1,10 @@
+from time import time
 import random
 from pathlib import Path
 from copy import copy
 from Utils.evaluateShared import loadProblemFromFile, Load, Point, distanceBetweenPoints, getSolutionCostWithError
-from Optimization.threeOptOptimization import threeOptVRPSolution, twoOptVRPSolution
-# from Optimization.twoOptOptimization import twoOptVRPSolution
+from Optimization.lambdaOptOptimization import twoOptVRPSolution, threeOptVRPSolution
+
 # predefined rules for the VRP
 depot = Load(id='0', pickup=Point(0,0), dropoff=Point(0, 0)) # treat the depot as a load (location where drivers must start and end shift)
 max_route_dst = 12 * 60 # drivers have a max shift of 12 hours, time in minutes == Euclidean dst
@@ -23,7 +24,6 @@ def findNearestLoad(current_load, loads):
             -loads a list of Loads that need to be fulfilled
     outputs: -nearest_load a Load type
     """
-
     nearestLoad = None
     min_dist = float('inf')
     # find the nearest load
@@ -54,7 +54,7 @@ def findFurthestLoad(current_load, loads):
     return furthestLoad
 
 
-def greedyBasicVRP(file_path, mode="random"):
+def greedyBasicVRP(file_path, mode="nearest"):
     """A method for solving the Vehicle Routing Problem using a nearest neighbor greedy algorithm
     inputs: -file_path a string file to the input txt file containing load information
             -starting_load None or int, tells nearest neighbor algorithm which node to start with
@@ -121,7 +121,6 @@ def greedyWith2OptVRP(file_path, mode):
 
     return optimized_schedules
 
-
 def greedyWith3OptVRP(file_path, mode):
     """A method for solving the Vehicle Routing Problem using a nearest neighbor greedy algorithm,
     followed by the 3-opt optimization technique.
@@ -139,38 +138,76 @@ def greedyEnsembleVRP(file_path):
      Then optimizes. Takes the solution with the lowest score.
     """
     loads = loadProblemFromFile(file_path).loads
-    number_of_loads = len(loads)
-    number_of_random_trials = min(10, int(0.1 * number_of_loads))
+    number_of_random_trials = 10
     lowest_cost = float("inf")
-    optimal_solution = None
+    optimal_schedules = None
     for mode in ["nearest"] + ["random" for i in range(number_of_random_trials)]:
-        schedules = greedyBasicVRP(file_path, mode)
+        schedules = greedyWith2OptVRP(file_path, mode)
         cost = computeSolutionCost(schedules, file_path)
         if cost < lowest_cost:
             lowest_cost = cost
-            optimal_solution = schedules
-    # run 3-opt
-    optimized_schedules = twoOptVRPSolution(file_path, optimal_solution)
+            optimal_schedules = schedules
 
-    return optimized_schedules
+    return optimal_schedules
+
+def greedyBestStartVRP(file_path):
+    """Runs all possible start positions for nearest neighbors. Run 2-opt optimization
+    on the top few. Times allowing."""
+    canidate_schedules = []
+    # first get 2-opt starting positions
+    time_cutoff = 20
+    start_time = time()
+    loads = loadProblemFromFile(file_path).loads
+    num_loads = len(loads)
+    starting_states = [greedyBasicVRP(file_path, "nearest")]
+    for i in range(len(loads)):
+        starting_states.append(greedyBasicVRP(file_path, "random"))
+    end_time1 = time()
+    time_cutoff -= (end_time1 - start_time)
+    # run 2-opt to get estimated time
+    st_near = time()
+    nearest_schedule = twoOptVRPSolution(file_path, starting_states[0])
+    et_near = time()
+    two_opt_rt = et_near - st_near
+    # compute how many runs we can do
+    time_cutoff -= two_opt_rt
+    num_runs = min(int(time_cutoff // two_opt_rt), num_loads)
+    # if time allows run more two opt with random starts
+    if num_runs < 1:
+        return nearest_schedule
+    else:
+        best_starts = sorted(starting_states[1::], key=lambda x: computeSolutionCost(x, file_path))[0: num_runs]
+    # run random starts
+    canidate_schedules.append(nearest_schedule)
+    for start in best_starts:
+        canidate_schedules.append(twoOptVRPSolution(file_path, start))
+
+    best_schedule = sorted(canidate_schedules, key=lambda x: computeSolutionCost(x, file_path))[0]
+    return best_schedule
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
+    from Solutions.sweepSolution import sweepWith2OptVRP
     import functools
     from Utils.testingUtils import testSolution
-    file_path = "../Training Problems/problem3.txt"
-    nearest = functools.partial(greedyBasicVRP, mode="nearest")
-    nearest_3Opt = functools.partial(greedyWith3OptVRP, mode="nearest")
-    nearest_2Opt = functools.partial(greedyWith2OptVRP, mode="nearest")
-    print("### Greedy Baseline ###")
-    testSolution(file_path, nearest, print_out_cost=True)
-    print("### Greedy 2-Opt ###")
-    testSolution(file_path, nearest_2Opt, print_out_cost=True)
-    print("### Greedy 3-Opt ###")
-    testSolution(file_path, nearest_3Opt, print_out_cost=True)
-    # print("### Greedy Ensemble with 3-opt ###")
-    # testSolution(file_path, greedyEnsembleVRP, print_out=True)
-
+    file_path = "../Training Problems/problem8.txt"
+    print("greedy basic")
+    testSolution(file_path, functools.partial(greedyBasicVRP, mode="nearest"), print_out_cost=True)
+    print("greedy 2-opt")
+    testSolution(file_path, functools.partial(greedyWith2OptVRP, mode="nearest"), print_out_route=False, print_out_cost=True)
+    print("greedy best start")
+    testSolution(file_path, greedyBestStartVRP, print_out_route=False,
+                 print_out_cost=True)
+    # print("greedy ensemble")
+    # testSolution(file_path, greedyEnsembleVRP, print_out_cost=True)
+    print("sweep 2-opt")
+    testSolution(file_path, sweepWith2OptVRP, print_out_cost=True)
 
 
 

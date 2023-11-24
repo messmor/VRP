@@ -41,35 +41,37 @@ def getAvgMetricsOnTraining(training_dir, solution_func):
     total_time = 0
     total_cost = 0
     number_problems = 0
+    max_runtime = 0
 
     for file_path in training_dir.iterdir():
         cost, runtime = testSolution(file_path, solution_func)
         total_time += runtime
         total_cost += cost
         number_problems += 1
+        if runtime > max_runtime:
+            max_runtime = runtime
 
     avg_time = total_time / number_problems
     avg_cost = total_cost / number_problems
 
     print("avg_time seconds", avg_time)
     print("avg_cost", avg_cost)
+    print("max runtime", max_runtime)
 
 
 if __name__ == "__main__":
     import functools
-    from Solutions.greedySolution import greedyBasicVRP, greedyWith3OptVRP, greedyWith2OptVRP, greedyEnsembleVRP
+    from Solutions.greedySolution import greedyBasicVRP, greedyWith2OptVRP, greedyBestStartVRP
     from Solutions.sweepSolution import sweepVRP, sweepWith2OptVRP
     from Solutions.ortoolsSolution import ortoolsSolver
+
     training_dir = "Training Problems"
     print("### metrics for greedySolver nearest ###")
     getAvgMetricsOnTraining(training_dir, functools.partial(greedyBasicVRP, mode="nearest"))
-    print("### metrics for greedySolver nearest 3-opt ###")
-    getAvgMetricsOnTraining(training_dir, functools.partial(greedyWith3OptVRP, mode="nearest"))
-    # print("### metrics for greedySolver nearest 2-opt###")
-    # getAvgMetricsOnTraining(training_dir, functools.partial(greedyWith2OptVRP, mode="nearest"))
+    print("### metrics for greedySolver nearest 2-opt###")
+    getAvgMetricsOnTraining(training_dir, functools.partial(greedyWith2OptVRP, mode="nearest"))
     print("### metrics for greedyEnsembleSolver ###")
-    getAvgMetricsOnTraining(training_dir, greedyEnsembleVRP)
-    # print("### metrics for sweepSolver Basic ###")
-    # getAvgMetricsOnTraining(training_dir, sweepVRP)
-    # print("### metrics for sweepSolver 2-opt ###")
-    # getAvgMetricsOnTraining(training_dir, sweepWith2OptVRP)
+    getAvgMetricsOnTraining(training_dir, greedyBestStartVRP)
+    print("### metrics for ortools Solver ###")
+    getAvgMetricsOnTraining(training_dir, ortoolsSolver)
+

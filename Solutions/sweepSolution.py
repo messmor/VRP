@@ -2,8 +2,7 @@ import numpy as np
 from pathlib import Path
 from copy import copy
 from Utils.evaluateShared import loadProblemFromFile, Load, Point, distanceBetweenPoints
-from Optimization.threeOptOptimization import threeOptVRPSolution
-from Optimization.twoOptOptimization import twoOptVRPSolution
+from Optimization.lambdaOptOptimization import twoOptVRPSolution
 # predefined rules for the VRP
  # treat the depot as a load (location where drivers must start and end shift)
 max_route_dst = 12 * 60 # drivers have a max shift of 12 hours, time in minutes == Euclidean dst
@@ -16,7 +15,6 @@ def findNearestLoad(curr_load, remaining_loads):
     """Finds the load that is nearest in terms of polar angle theta."""
     nearest_load = sorted(remaining_loads, key=lambda x: compute_angular_dst(curr_load, x))[0]
     return nearest_load
-
 
 def sweepVRP(file_path):
     #  read in data about load locations
@@ -64,6 +62,7 @@ def sweepWith2OptVRP(file_path):
     optimized_schedules = twoOptVRPSolution(file_path, schedules)
 
     return optimized_schedules
+
 
 if __name__ == "__main__":
     file_path = "../Training Problems/problem1.txt"

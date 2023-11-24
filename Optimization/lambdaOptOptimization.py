@@ -30,13 +30,12 @@ def convertSchedulesToTour(schedules, add_all_drivers=False):
         num_depot_visits = tour.count('0')
         curr_num_drivers = num_depot_visits - 1
         extra_depots = num_loads - curr_num_drivers
-        copy_tour = tour.copy()
-        while extra_depots > 0:
-            for l_i, load in enumerate(copy_tour):
-                if load == "0":
-                    tour.insert(l_i, '0')
-                    extra_depots -= 1
 
+        while extra_depots > 0:
+            for k in range(len(tour) - 1, -1, -1):
+                if tour[k] == "0":
+                    tour.insert(k + 1, '0')
+                    extra_depots -= 1
 
     return tour
 
@@ -71,18 +70,18 @@ def compute_distance_matrix(loads):
     return dst_mat
 
 
-def compute_route_length(route, dst_mat):
+def compute_route_length(route, dst_mat, from_depot=False):
     """computes distance of a route using values stored in the distance matrix.
     inputs: -route a list of string route indices ex ['1', '4', '10']
             - dist_mat numpy array the distance matrix for the problem
     outputs: -route_dst a float the total distance of the route
     """
-    # modify route so it starts and ends at depot
-    route_dst = 0
-    for i in range(len(route) - 1):
-        start_load = int(route[i])
-        end_load = int(route[i+1])
-        route_dst += dst_mat[start_load, end_load]
+    if from_depot:
+        route = route.copy()
+        route.insert(0, '0')
+        route.append('0')
+    # note that this computes the route length neglecting distance from and to depot
+    route_dst = sum([dst_mat[int(route[i]), int(route[i+1])] for i in range(len(route) - 1)])
 
     return route_dst
 
@@ -91,71 +90,11 @@ def is_valid_solution(tour, dist_mat):
     schedules = convertTourToSchedule(tour)
     value = True
     for route in schedules:
-        route_dist = compute_route_length(route, dist_mat)
+        route_dist = compute_route_length(route, dist_mat, from_depot=True)
         if route_dist > max_route_dst:
             value = False
             break
     return value
-
-
-def threeOptSwitch(route, i, j, k):
-    new_route = route[:i] + route[i:j][::-1] + route[j:k][::-1] + route[k:]
-    return new_route
-
-
-def threeOptRoute(tour, dst_mat, improvement_threshold=0.01, time_cutoff=10):
-    """Implements 3-opt optimization to improve a given route or schedule with in the
-    larger solution.
-    inputs: -route a list on str ids ex ['1', '4', '5']
-    outputs: -best_route a new route with shorter distance.
-    """
-    # run optimization
-    best_tour = tour
-    # optimize for cost = num_routes * 500 + total_distance
-    routes = convertTourToSchedule(tour)
-    best_cost = 500 * len(routes) + compute_route_length(tour, dst_mat)
-    improvement_factor = 1
-    start_time = time()
-    while improvement_factor > improvement_threshold:
-        previous_best_cost = best_cost
-        # run through all switches that don't move first or last stop (these are the depot)
-        for i, j, k in itertools.combinations(range(1, len(best_tour)-1), 3):
-            new_tour = threeOptSwitch(best_tour, i, j, k)
-            # make sure route still meets max dist constraint
-            if not is_valid_solution(new_tour, dst_mat):
-                continue
-
-            new_routes = convertTourToSchedule(new_tour)
-            new_cost = 500 * len(new_routes) + compute_route_length(new_tour, dst_mat)
-            if new_cost < best_cost:
-                best_tour = new_tour
-                best_cost = new_cost
-
-        improvement_factor = 1 - best_cost / previous_best_cost
-        end_time = time()
-        if end_time - start_time > time_cutoff:
-            break
-
-    return best_tour
-
-
-def threeOptVRPSolution(file_path, schedules):
-    """Implements 3-opt optimization to improve a given VRP solution.
-    inputs: -file_path a string path to the problem .txt file
-            -solution a starting solution to the vrp problem. Format should be
-            in tour format.
-    outputs: -new_solution a schedules list with lower cost.
-    """
-    #  read in data about load locations
-    if not Path(file_path).is_file():
-        raise FileExistsError(f"file path {file_path} does not exist!")
-    loads = loadProblemFromFile(file_path).loads
-    dst_mat = compute_distance_matrix(loads)
-    tour = convertSchedulesToTour(schedules)
-    best_tour = threeOptRoute(tour, dst_mat)
-    best_schedules = convertTourToSchedule(best_tour)
-
-    return best_schedules
 
 
 def twoOptSwitch(route, i, j):
@@ -163,7 +102,7 @@ def twoOptSwitch(route, i, j):
     return new_route
 
 
-def twoOptRoute(tour, dst_mat, improvement_threshold=0.01, time_cutoff=10):
+def twoOptRoute(tour, dst_mat, improvement_threshold=0.01, time_cutoff=20):
     """Implements 2-opt optimization to improve a given route or schedule with in the
     larger solution.
     inputs: -route a list on str ids ex ['1', '4', '5']
@@ -173,28 +112,34 @@ def twoOptRoute(tour, dst_mat, improvement_threshold=0.01, time_cutoff=10):
     best_tour = tour
     # optimize for cost = num_routes * 500 + total_distance
     routes = convertTourToSchedule(tour)
-    best_cost = 500 * len(routes) + compute_route_length(tour, dst_mat)
+    best_cost = 500 * len(routes) + compute_route_length(tour, dst_mat, from_depot=True)
     improvement_factor = 1
+    #check time every 1000 iterations
+    iter_count = 0
     start_time = time()
     while improvement_factor > improvement_threshold:
 
         previous_best_cost = best_cost
         # run through all switches that don't move first or last stop (these are the depot)
-        for i, j in itertools.combinations(range(1, len(best_tour)), 2):
+        for i, j in itertools.combinations(range(1, len(best_tour)-1), 2):
+            iter_count += 1
             new_tour = twoOptSwitch(best_tour, i, j)
             # make sure route still meets max dist constraint
             if not is_valid_solution(new_tour, dst_mat):
                 continue
             new_routes = convertTourToSchedule(new_tour)
-            new_cost = 500 * len(new_routes) + compute_route_length(new_tour, dst_mat)
+            new_cost = 500 * len(new_routes) + compute_route_length(new_tour, dst_mat, from_depot=True)
             if new_cost < best_cost:
                 best_tour = new_tour
                 best_cost = new_cost
+            # check time
+            if iter_count % 1000 == 0:
+                end_time = time()
+                if end_time - start_time > time_cutoff:
+                    break
 
         improvement_factor = 1 - best_cost / previous_best_cost
-        end_time = time()
-        if end_time - start_time > time_cutoff:
-            break
+
 
 
     return best_tour
@@ -216,18 +161,81 @@ def twoOptVRPSolution(file_path, schedules):
     best_tour = twoOptRoute(tour, dst_mat)
     best_schedules = convertTourToSchedule(best_tour)
 
+
+    return best_schedules
+
+
+def threeOptSwitch(route, i, j, k):
+    new_route = route[:i] + route[i:j][::-1] + route[j:k][::-1] + route[k:]
+    return new_route
+
+
+def threeOptRoute(tour, dst_mat, improvement_threshold=0.001, time_cutoff=10):
+    """Implements 3-opt optimization to improve a given route or schedule with in the
+    larger solution.
+    inputs: -route a list on str ids ex ['1', '4', '5']
+    outputs: -best_route a new route with shorter distance.
+    """
+    # run optimization
+    best_tour = tour
+    # optimize for cost = num_routes * 500 + total_distance
+    routes = convertTourToSchedule(tour)
+    best_cost = 500 * len(routes) + compute_route_length(tour, dst_mat, from_depot=True)
+    improvement_factor = 1
+    # check time every 1000 iterations
+    iter_count = 0
+    improvement_iter = 0
+    start_time = time()
+    while improvement_factor > improvement_threshold:
+        previous_best_cost = best_cost
+        # run through all switches that don't move first or last stop (these are the depot)
+        for i, j, k in itertools.combinations(range(1, len(best_tour)-1), 3):
+            new_tour = threeOptSwitch(best_tour, i, j, k)
+            # make sure route still meets max dist constraint
+            if not is_valid_solution(new_tour, dst_mat):
+                continue
+
+            new_routes = convertTourToSchedule(new_tour)
+            new_cost = 500 * len(new_routes) + compute_route_length(new_tour, dst_mat, from_depot=True)
+            if new_cost < best_cost:
+                best_tour = new_tour
+                best_cost = new_cost
+            # check time
+            if iter_count % 1000 == 0:
+                end_time = time()
+                if end_time - start_time > time_cutoff:
+                    break
+
+        improvement_factor = 1 - best_cost / previous_best_cost
+        improvement_iter += 1
+
+    return best_tour
+
+
+def threeOptVRPSolution(file_path, schedules):
+    """Implements 3-opt optimization to improve a given VRP solution.
+    inputs: -file_path a string path to the problem .txt file
+            -solution a starting solution to the vrp problem. Format should be
+            in tour format.
+    outputs: -new_solution a schedules list with lower cost.
+    """
+    #  read in data about load locations
+    if not Path(file_path).is_file():
+        raise FileExistsError(f"file path {file_path} does not exist!")
+    loads = loadProblemFromFile(file_path).loads
+    dst_mat = compute_distance_matrix(loads)
+    tour = convertSchedulesToTour(schedules, add_all_drivers=True)
+    best_tour = threeOptRoute(tour, dst_mat)
+    best_schedules = convertTourToSchedule(best_tour)
+
+
     return best_schedules
 
 
 
 
-if __name__ == "__main__":
-    import functools
-    from Utils.testingUtils import testSolution
-    from Solutions.greedySolution import greedyWith2OptVRP
-    file_path = "../Training Problems/problem8.txt"
-    test_func = functools.partial(greedyWith2OptVRP, mode="nearest")
-    testSolution(file_path, test_func, print_out_cost=True, print_out_route=False)
+
+
 
 
 
