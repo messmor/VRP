@@ -62,16 +62,17 @@ def getAvgMetricsOnTraining(training_dir, solution_func):
 if __name__ == "__main__":
     import functools
     from Solutions.greedySolution import greedyBasicVRP, greedyWith2OptVRP, greedyBestStartVRP
-    from Solutions.sweepSolution import sweepVRP, sweepWith2OptVRP
-    from Solutions.ortoolsSolution import ortoolsSolver
+    from Optimization.destroyAndRepairOptimization import destroyAndRepairSolver
 
     training_dir = "Training Problems"
     print("### metrics for greedySolver nearest ###")
     getAvgMetricsOnTraining(training_dir, functools.partial(greedyBasicVRP, mode="nearest"))
+    print("### destroy and repair solver ###")
+    getAvgMetricsOnTraining(training_dir, destroyAndRepairSolver)
     print("### metrics for greedySolver nearest 2-opt###")
     getAvgMetricsOnTraining(training_dir, functools.partial(greedyWith2OptVRP, mode="nearest"))
     print("### metrics for greedyEnsembleSolver ###")
     getAvgMetricsOnTraining(training_dir, greedyBestStartVRP)
-    print("### metrics for ortools Solver ###")
-    getAvgMetricsOnTraining(training_dir, ortoolsSolver)
+
+
 
