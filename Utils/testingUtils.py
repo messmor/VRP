@@ -1,3 +1,4 @@
+import re
 from time import time
 from Utils.evaluateShared import loadProblemFromFile, getSolutionCostWithError, getDistanceOfScheduleWithReturnHome
 from pathlib import Path
@@ -32,6 +33,11 @@ def testSolution(file_path, solution_func, print_out_route=False, print_out_cost
     return total_cost, run_time
 
 
+def get_numbers(string):
+    numbers = re.findall(r'\d', string)
+    return int(''.join(numbers))
+
+
 def getAvgMetricsOnTraining(training_dir, solution_func):
     """Runs the VRP solver on all test examples and provides average metrics for the whole dataset."""
     training_dir = Path(training_dir)
@@ -42,9 +48,10 @@ def getAvgMetricsOnTraining(training_dir, solution_func):
     total_cost = 0
     number_problems = 0
     max_runtime = 0
-
-    for file_path in training_dir.iterdir():
+    file_paths = sorted(training_dir.iterdir(), key=lambda x: get_numbers(x.name))
+    for file_path in file_paths:
         cost, runtime = testSolution(file_path, solution_func)
+        print(f"problem {file_path.name} cost: {cost}, runtime {runtime}")
         total_time += runtime
         total_cost += cost
         number_problems += 1
@@ -69,10 +76,10 @@ if __name__ == "__main__":
     getAvgMetricsOnTraining(training_dir, functools.partial(greedyBasicVRP, mode="nearest"))
     print("### destroy and repair solver ###")
     getAvgMetricsOnTraining(training_dir, destroyAndRepairSolver)
-    print("### metrics for greedySolver nearest 2-opt###")
-    getAvgMetricsOnTraining(training_dir, functools.partial(greedyWith2OptVRP, mode="nearest"))
-    print("### metrics for greedyEnsembleSolver ###")
-    getAvgMetricsOnTraining(training_dir, greedyBestStartVRP)
+    # print("### metrics for greedySolver nearest 2-opt###")
+    # getAvgMetricsOnTraining(training_dir, functools.partial(greedyWith2OptVRP, mode="nearest"))
+    # print("### metrics for greedyEnsembleSolver ###")
+    # getAvgMetricsOnTraining(training_dir, greedyBestStartVRP)
 
 
 

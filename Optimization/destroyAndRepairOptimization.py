@@ -15,6 +15,11 @@ def single_routes_intialization(loads):
     return solution
 
 
+
+
+
+
+
 class largeNeighborhoodSearch(object):
     """A class to implement large neighborhood search using the neighborhood relocate
     heuristic.
@@ -26,7 +31,7 @@ class largeNeighborhoodSearch(object):
         self.file_path = file_path
         self.loads = loadProblemFromFile(file_path).loads
         self.num_loads = len(self.loads)
-        assert is_mode in ["nearest_neighbor", "single_routes"]
+        assert is_mode in ["nearest_neighbor", "single_routes", "random_insertion"]
         self.is_mode = is_mode  # initial solution choices: nearest_neighbor, single_loads,...
         self.initial_solution = None
         # treat the depot as a load (location where drivers must start and end shift)
@@ -37,10 +42,11 @@ class largeNeighborhoodSearch(object):
         # set up distance matrix in advance to reduce compute
         self.distance_matrix = self.get_distance_matrix()
         # destroy values
-        self.number_removals = max(3, np.round(0.15*self.num_loads).astype(int))
-        self.max_alg_iters = int(10000 / self.num_loads)
+        self.number_removals = min(47, self.num_loads)
+        self.number_index_checks = min(50, self.num_loads - 2)
+        self.max_alg_iters = 50
         self.improvement_threshold = 0.01
-        self.max_run_time = 20
+        self.max_run_time = 60
 
 
     def get_distance_matrix(self):
@@ -125,12 +131,29 @@ class largeNeighborhoodSearch(object):
 
         return schedules
 
+    def random_insertion_initialization(self):
+        solution = []
+        curr_route = []
+        remaining_loads = self.loads.copy()
+
+        while remaining_loads:
+            load = random.choice(remaining_loads)
+            if self.is_valid_route(curr_route + [str(load.id)]):
+                curr_route.append(str(load.id))
+            else:
+                solution.append(curr_route)
+                curr_route = [str(load.id)]
+            remaining_loads.remove(load)
+        return solution
+
     def get_initial_solution(self):
         """Creates a starting solution to optimize."""
         if self.is_mode == "nearest_neighbor":
             self.initial_solution = greedyBasicVRP(file_path=self.file_path, mode="nearest")
         elif self.is_mode == "single_routes":
             self.initial_solution = single_routes_intialization(self.loads)
+        elif self.is_mode == "random_insertion":
+            self.initial_solution = self.random_insertion_initialization()
 
     def destroy_solution(self, solution):
         """randomly removes loads from routes at random."""
@@ -152,7 +175,9 @@ class largeNeighborhoodSearch(object):
         for load_id in loads_removed:
             best_distance_insert = float("inf")
             best_index = None
-            for index in range(len(tour)):
+
+            random_indexes = random.sample(range(len(tour)), k=min(self.number_index_checks, len(tour)))
+            for index in random_indexes:
                 new_tour = tour.copy()
                 new_tour.insert(index, load_id)
                 if self.is_valid_tour(new_tour):
@@ -198,17 +223,18 @@ class largeNeighborhoodSearch(object):
 
         return start_sol
 
-    def solver_VRP(self):
+    def solver_VRP(self, print_results=False):
         """Runs search and destroy algorithm until improvement stops or runtime is exceeded"""
         if self.initial_solution is None:
             self.get_initial_solution()
         improvement_factor = 1
         # check time every after every app
         improvement_iter = 0
+        plateau_iter = 0
         start_time = time()
         best_sol = self.initial_solution.copy()
         best_cost = self.compute_solution_cost(best_sol)
-
+        print("initial cost", best_cost)
         while improvement_factor > self.improvement_threshold:
             if time() - start_time > self.max_run_time:
                 break
@@ -219,12 +245,23 @@ class largeNeighborhoodSearch(object):
 
             improvement_factor = 1 - (best_cost / previous_best_cost)
             improvement_iter += 1
-            if improvement_factor <= self.improvement_threshold and improvement_iter < 3:
-                self.number_removals += 1
-                if self.number_removals > self.num_loads:
-                    break
+            # change number of removals as time goes on
+            if improvement_factor <= self.improvement_threshold:
+                plateau_iter += 1
+                self.number_removals += 3**plateau_iter
                 improvement_factor = 1
-                improvement_iter = 0
+            if self.number_removals > self.num_loads:
+                break
+            print("cost", best_cost)
+            print("number of removals:", self.number_removals)
+            print("number of loads", self.num_loads)
+            print("improvement factor", improvement_factor)
+
+        if print_results:
+            print("number of iterations:", improvement_iter)
+            print("total cost:", best_cost)
+
+
         return best_sol
 
 
@@ -236,10 +273,10 @@ def destroyAndRepairSolver(file_path):
 
 
 if __name__ == "__main__":
-    file_path = "../Training Problems/problem2.txt"
+    file_path = "../Training Problems/problem20.txt"
     lnhs = largeNeighborhoodSearch(file_path, is_mode="nearest_neighbor")
     st = time()
-    sol = lnhs.solver_VRP()
+    sol = lnhs.solver_VRP(print_results=True)
     et = time()
     print("runtime", et - st)
     print("solutions", sol)

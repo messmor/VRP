@@ -88,7 +88,7 @@ def reformat_solution(data, manager, routing, solution):
     return schedules
 
 
-def ortoolsSolver(file_path, print_solutions=False):
+def ortoolsSolver(file_path, print_solutions=False, time_limit_seconds=25):
     #  read in data about load locations
     if not Path(file_path).is_file():
         raise FileExistsError(f"file path {file_path} does not exist!")
@@ -128,6 +128,7 @@ def ortoolsSolver(file_path, print_solutions=False):
     search_parameters.first_solution_strategy = (
         routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     )
+    search_parameters.time_limit.seconds = time_limit_seconds
     # Solve the problem.
     solution = routing.SolveWithParameters(search_parameters)
     # Print solution on console.
